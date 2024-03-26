@@ -19,7 +19,7 @@ type itemNode struct {
 }
 
 func (t template) depth() int {
-	return t.depth()
+	return t.items.depth() - 1
 }
 func (n itemNode) depth() int {
 	if len(n.subItems) == 0 {
