@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type template[T any] struct {
+type template struct {
 	t     reflect.Type
 	items *itemNode
 }
@@ -18,7 +18,7 @@ type itemNode struct {
 	subItems  []*itemNode
 }
 
-func (t template[T]) depth() int {
+func (t template) depth() int {
 	return t.depth()
 }
 func (n itemNode) depth() int {
@@ -35,8 +35,8 @@ func (n itemNode) depth() int {
 	return maxDepth + 1
 }
 
-func newTemplate[T any](model T) (template[T], error) {
-	return template[T]{
+func newTemplate(model any) (template, error) {
+	return template{
 		t:     reflect.TypeOf(model),
 		items: buildItemTree(reflect.TypeOf(model), ""),
 	}, nil
@@ -83,7 +83,7 @@ func buildItemTree(t reflect.Type, parentPath string) *itemNode {
 	return node
 }
 
-func (t template[T]) GetField(path string) (string, error) {
+func (t template) GetField(path string) (string, error) {
 	val, err := getValueByPath(reflect.New(t.t).Elem().Interface(), path)
 	if err != nil {
 		return "", err

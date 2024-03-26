@@ -1,24 +1,25 @@
 package Record2Excel
 
 import (
+	"fmt"
 	"github.com/xuri/excelize/v2"
 	"reflect"
 )
 
-type Exporter[T any] interface {
-	AddRecord(record T) error
+type Exporter interface {
+	AddRecord(record any) error
 	Export() *excelize.File
 }
 
-type exporter[T any] struct {
-	template template[T]
+type exporter struct {
+	template template
 	file     *excelize.File
 	offset   int
 	index    map[string]int
 }
 
-func NewExporter[T any](model T) (Exporter Exporter[T], err error) {
-	var e = &exporter[T]{
+func NewExporter(model any) (Exporter Exporter, err error) {
+	var e = &exporter{
 		file:  excelize.NewFile(),
 		index: make(map[string]int),
 	}
@@ -30,7 +31,7 @@ func NewExporter[T any](model T) (Exporter Exporter[T], err error) {
 	return e, nil
 }
 
-func (e *exporter[T]) buildHeader() {
+func (e *exporter) buildHeader() {
 	e.offset = e.template.items.depth() - 1
 
 	// 初始化Excel文件，如果还没有初始化
@@ -86,7 +87,11 @@ func (e *exporter[T]) buildHeader() {
 	return
 }
 
-func (e *exporter[T]) AddRecord(record T) error {
+func (e *exporter) AddRecord(record any) error {
+	if reflect.TypeOf(record) != e.template.t {
+		return fmt.Errorf("record type mismatch")
+	}
+
 	v := reflect.ValueOf(record)
 	startIdx := e.offset + 1
 
@@ -128,6 +133,6 @@ func (e *exporter[T]) AddRecord(record T) error {
 	return nil
 }
 
-func (e *exporter[T]) Export() *excelize.File {
+func (e *exporter) Export() *excelize.File {
 	return e.file
 }

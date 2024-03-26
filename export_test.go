@@ -63,7 +63,10 @@ func Test_exporter_buildHeader(t *testing.T) {
 	}
 
 	e, _ := NewExporter(s)
-	e.AddRecord(s)
+	err := e.AddRecord(s)
+	if err != nil {
+		t.Errorf("AddRecord() error = %v", err)
+	}
 	e.AddRecord(s)
 	e.AddRecord(s)
 	file := e.Export()
