@@ -1,6 +1,8 @@
 # Record2Excel
 
-对 [Excelize](https://github.com/qax-os/excelize) 的二次封装，用于快速将数据库记录导出为 Excel 文件
+快速将数据库记录导出为 Excel 表格，或者你可以当做是 Excel 的 ORM
+
+基于 [Excelize](https://github.com/qax-os/excelize) 的二次封装
 
 ## 快速入门
 
