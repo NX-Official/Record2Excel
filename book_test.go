@@ -90,6 +90,7 @@ func Test_exporter_buildHeader(t *testing.T) {
 	err = sheetOverview.AddRecord(overview)
 	err = sheetOverview.AddRecord(overview)
 	err = sheetOverview.AddRecord(overview)
+	err = sheetOverview.AddRecords([]Overview{overview, overview, overview})
 	if err != nil {
 		t.Fatal(err)
 	}

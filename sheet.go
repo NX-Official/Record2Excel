@@ -8,10 +8,9 @@ import (
 
 type Sheet interface {
 	AddRecord(record any) error
-	AddRecords(records []any) error
+	AddRecords(records any) error
 	applyHeaderStyle() error
 	applyContentStyle() error
-	// SetHeaderStyle(style *excelize.Style)
 }
 
 type sheet struct {
@@ -135,9 +134,12 @@ func (s *sheet) buildHeader() (err error) {
 	return
 }
 
-func (s *sheet) AddRecords(records []any) error {
-	for _, record := range records {
-		err := s.AddRecord(record)
+func (s *sheet) AddRecords(records any) error {
+	if reflect.TypeOf(records).Kind() != reflect.Slice {
+		return fmt.Errorf("records must be a slice")
+	}
+	for i := 0; i < reflect.ValueOf(records).Len(); i++ {
+		err := s.AddRecord(reflect.ValueOf(records).Index(i).Interface())
 		if err != nil {
 			return err
 		}
@@ -217,4 +219,11 @@ func (s *sheet) applyContentStyle() error {
 
 func (s *sheet) applyCellStyle(topLeftCell, bottomRightCell string, styleID int) error {
 	return s.file.SetCellStyle(s.name, topLeftCell, bottomRightCell, styleID)
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
