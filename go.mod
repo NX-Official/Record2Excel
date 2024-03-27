@@ -1,6 +1,6 @@
 module github.com/NX-Official/Record2Excel
 
-go 1.22.0
+go 1.18
 
 require github.com/xuri/excelize/v2 v2.8.1
 
