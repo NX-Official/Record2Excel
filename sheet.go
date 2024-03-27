@@ -14,15 +14,15 @@ type sheet struct {
 	name     string
 	template template
 	file     *excelize.File
-	offset   int
-	index    map[string]int
+	length   int
+	colIndex map[string]int
 }
 
 func newSheet(name string, model any, file *excelize.File) (s Sheet, err error) {
 	var e = &sheet{
-		name:  name,
-		index: make(map[string]int),
-		file:  file,
+		name:     name,
+		colIndex: make(map[string]int),
+		file:     file,
 	}
 	e.template, err = newTemplate(model)
 	if err != nil {
@@ -40,7 +40,7 @@ func newSheet(name string, model any, file *excelize.File) (s Sheet, err error) 
 }
 
 func (s *sheet) buildHeader() (err error) {
-	s.offset = s.template.depth()
+	s.length = s.template.depth()
 
 	currentColumn := 1
 	var mergeRanges [][2]string // 用于记录需要合并的单元格范围
@@ -59,11 +59,11 @@ func (s *sheet) buildHeader() (err error) {
 		if err != nil {
 			return err
 		}
-		s.index[node.fieldPath] = currentColumn
+		s.colIndex[node.fieldPath] = currentColumn
 
 		if len(node.subItems) == 0 { // 如果是叶子节点
-			if s.offset > row { // 需要跨行合并
-				cellEnd, _ := excelize.CoordinatesToCellName(currentColumn, s.offset)
+			if s.length > row { // 需要跨行合并
+				cellEnd, _ := excelize.CoordinatesToCellName(currentColumn, s.length)
 				mergeRanges = append(mergeRanges, [2]string{cell, cellEnd})
 			}
 			currentColumn++ // 移动到下一个列
@@ -112,63 +112,44 @@ func (s *sheet) AddRecords(records []any) error {
 	return nil
 }
 
-func (s *sheet) AddRecord(record any) error {
+func (s *sheet) AddRecord(record any) (err error) {
 	if reflect.TypeOf(record) != s.template.t {
 		return fmt.Errorf("record type mismatch")
 	}
 
 	v := reflect.ValueOf(record)
-	startIdx := s.offset + 1
 
-	var insert func(v reflect.Value, node *itemNode) error
-	insert = func(v reflect.Value, node *itemNode) error {
-		for _, item := range node.subItems {
-			val := v.FieldByName(item.name)
-			switch val.Kind() {
-			case reflect.Struct:
-				err := insert(val, item)
-				if err != nil {
-					return err
-				}
-
-			case reflect.Slice:
-				currentIdx := s.offset + 1
-				for i := 0; i < val.Len(); i++ {
-					val := val.Index(i)
-					if val.Kind() == reflect.Struct {
-						tmpIdx := startIdx
-						startIdx = currentIdx
-						err := insert(val, item)
-						if err != nil {
-							return err
-						}
-						startIdx = tmpIdx
-					} else {
-						cell, _ := excelize.CoordinatesToCellName(s.index[item.fieldPath], currentIdx)
-						err := s.file.SetCellValue(s.name, cell, val.Interface())
-						if err != nil {
-							return err
-						}
-					}
-					currentIdx++
-				}
-				startIdx = max(startIdx, currentIdx)
-
-			default:
-				cell, _ := excelize.CoordinatesToCellName(s.index[item.fieldPath], startIdx)
-				err := s.file.SetCellValue(s.name, cell, val.Interface())
-				if err != nil {
-					return err
-				}
+	var insert func(v reflect.Value, node *itemNode, currIdx int) (err error, maxIdx int)
+	insert = func(v reflect.Value, node *itemNode, currIdx int) (err error, maxIdx int) {
+		maxIdx = max(currIdx, maxIdx)
+		switch v.Kind() {
+		case reflect.Struct:
+			for _, child := range node.subItems {
+				_, childMaxIdx := insert(v.FieldByName(child.name), child, currIdx)
+				maxIdx = max(maxIdx, childMaxIdx)
 			}
+		case reflect.Map:
+			for i, key := range v.MapKeys() {
+				_, childMaxIdx := insert(v.MapIndex(key), node.subItems[i], currIdx)
+				maxIdx = max(maxIdx, childMaxIdx)
+			}
+		case reflect.Slice:
+			for i := 0; i < v.Len(); i++ {
+				_, childMaxIdx := insert(v.Index(i), node, currIdx+i)
+				maxIdx = max(maxIdx, childMaxIdx)
+			}
+		default:
+			s.writeCell(node.fieldPath, currIdx, v.Interface())
 		}
-		return nil
+		return
 	}
 
-	err := insert(v, s.template.items)
-	if err != nil {
-		return err
-	}
-	s.offset = startIdx - 1
-	return nil
+	err, s.length = insert(v, s.template.items, s.length+1)
+	return
+}
+
+func (s *sheet) writeCell(colName string, row int, value any) error {
+	cell, _ := excelize.CoordinatesToCellName(s.colIndex[colName], row)
+	fmt.Println(colName, "->", s.colIndex[colName], row, cell, value)
+	return s.file.SetCellValue(s.name, cell, value)
 }

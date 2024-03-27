@@ -38,11 +38,11 @@ func (n itemNode) depth() int {
 func newTemplate(model any) (template, error) {
 	return template{
 		t:     reflect.TypeOf(model),
-		items: buildItemTree(reflect.TypeOf(model), ""),
+		items: buildItemTree(model, reflect.TypeOf(model), ""),
 	}, nil
 }
 
-func buildItemTree(t reflect.Type, parentPath string) *itemNode {
+func buildItemTree(model any, t reflect.Type, parentPath string) *itemNode {
 	// 处理指针类型，我们需要其指向的元素类型
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -59,7 +59,6 @@ func buildItemTree(t reflect.Type, parentPath string) *itemNode {
 		t = t.Elem()
 	}
 
-	// 只有结构体类型才有子字段需要遍历
 	if t.Kind() == reflect.Struct {
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)
@@ -70,7 +69,7 @@ func buildItemTree(t reflect.Type, parentPath string) *itemNode {
 			}
 
 			// 为当前字段创建 itemNode，并递归处理嵌套结构体字段
-			childNode := buildItemTree(field.Type, fieldPath)
+			childNode := buildItemTree(model, field.Type, fieldPath)
 			childNode.name = field.Name // 更新为实际的字段名
 			childNode.tagName = field.Name
 			if name, ok := field.Tag.Lookup("excel"); ok {
@@ -79,6 +78,36 @@ func buildItemTree(t reflect.Type, parentPath string) *itemNode {
 			childNode.fieldPath = fieldPath
 			node.subItems = append(node.subItems, childNode)
 		}
+	} else if t.Kind() == reflect.Map {
+		val, err := getValueByPath(model, parentPath)
+		if err != nil {
+			panic(err)
+		}
+
+		valMap := val.(map[string]bool)
+		for key := range valMap {
+			childNode := &itemNode{
+				name:      key,
+				tagName:   key,
+				fieldPath: parentPath + "." + key,
+				subItems:  []*itemNode{},
+			}
+			node.subItems = append(node.subItems, childNode)
+		}
+
+		//switch t.Elem().Kind() {
+		//case reflect.Bool:
+		//	for key := range val.(map[string]bool) {
+		//		childNode := &itemNode{
+		//			name:      key,
+		//			tagName:   key,
+		//			fieldPath: parentPath + "." + t.Name(),
+		//			subItems:  []*itemNode{},
+		//		}
+		//		node.subItems = append(node.subItems, childNode)
+		//	}
+		//
+		//}
 	}
 	return node
 }
