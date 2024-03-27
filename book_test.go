@@ -105,7 +105,7 @@ func Test_exporter_buildHeader(t *testing.T) {
 	err = sheetAchievementOverview.AddRecord(achievementOverview)
 	err = sheetAchievementOverview.AddRecord(achievementOverview)
 	err = sheetAchievementOverview.AddRecord(achievementOverview)
-	file := wb.Export()
+	file, _ := wb.Export()
 	if err := file.SaveAs("test.xlsx"); err != nil {
 		t.Fatal(err)
 	}

@@ -8,39 +8,71 @@ import (
 
 type Sheet interface {
 	AddRecord(record any) error
+	AddRecords(records []any) error
+	applyHeaderStyle() error
+	applyContentStyle() error
+	// SetHeaderStyle(style *excelize.Style)
 }
 
 type sheet struct {
-	name     string
-	template template
-	file     *excelize.File
-	length   int
-	colIndex map[string]int
+	name         string
+	template     template
+	file         *excelize.File
+	length       int
+	width        int
+	headerLength int
+	colIndex     map[string]int
+
+	headerStyleID   int
+	contentStyleID  int
+	customStyleFunc func(record any) (style *excelize.Style)
 }
 
-func newSheet(name string, model any, file *excelize.File) (s Sheet, err error) {
-	var e = &sheet{
-		name:     name,
-		colIndex: make(map[string]int),
-		file:     file,
+func newSheet(name string, model any, file *excelize.File, option ...Option) (s Sheet, err error) {
+	o := &options{
+		headerStyle:     defaultHeaderStyle,
+		contentStyle:    defaultContentStyle,
+		customStyleFunc: nil,
 	}
-	e.template, err = newTemplate(model)
+	for _, opt := range option {
+		opt.apply(o)
+	}
+
+	sh := &sheet{
+		name:            name,
+		colIndex:        make(map[string]int),
+		file:            file,
+		customStyleFunc: o.customStyleFunc,
+	}
+
+	sh.headerStyleID, err = file.NewStyle(o.headerStyle)
 	if err != nil {
 		return nil, err
 	}
+	sh.contentStyleID, err = file.NewStyle(o.contentStyle)
+	if err != nil {
+		return nil, err
+	}
+	sh.template, err = newTemplate(model)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = file.NewSheet(name)
 	if err != nil {
 		return nil, err
 	}
-	err = e.buildHeader()
+	err = sh.buildHeader()
 	if err != nil {
 		return nil, err
 	}
-	return e, nil
+
+	return sh, nil
 }
 
 func (s *sheet) buildHeader() (err error) {
 	s.length = s.template.depth()
+	s.headerLength = s.length
 
 	currentColumn := 1
 	var mergeRanges [][2]string // 用于记录需要合并的单元格范围
@@ -60,6 +92,7 @@ func (s *sheet) buildHeader() (err error) {
 			return err
 		}
 		s.colIndex[node.fieldPath] = currentColumn
+		s.width = max(s.width, currentColumn)
 
 		if len(node.subItems) == 0 { // 如果是叶子节点
 			if s.length > row { // 需要跨行合并
@@ -144,7 +177,17 @@ func (s *sheet) AddRecord(record any) (err error) {
 		return
 	}
 
-	err, s.length = insert(v, s.template.items, s.length+1)
+	err, newLength := insert(v, s.template.items, s.length+1)
+
+	for _, child := range s.template.items.subItems {
+		if v.FieldByName(child.name).Kind() != reflect.Slice &&
+			v.FieldByName(child.name).Kind() != reflect.Map &&
+			v.FieldByName(child.name).Kind() != reflect.Struct {
+			s.mergeCell(child.fieldPath, s.length+1, newLength)
+		}
+	}
+
+	s.length = newLength
 	return
 }
 
@@ -152,4 +195,26 @@ func (s *sheet) writeCell(colName string, row int, value any) error {
 	cell, _ := excelize.CoordinatesToCellName(s.colIndex[colName], row)
 	fmt.Println(colName, "->", s.colIndex[colName], row, cell, value)
 	return s.file.SetCellValue(s.name, cell, value)
+}
+
+func (s *sheet) mergeCell(colName string, rowStart, rowEnd int) error {
+	startCell, _ := excelize.CoordinatesToCellName(s.colIndex[colName], rowStart)
+	endCell, _ := excelize.CoordinatesToCellName(s.colIndex[colName], rowEnd)
+	return s.file.MergeCell(s.name, startCell, endCell)
+}
+
+func (s *sheet) applyHeaderStyle() error {
+	topLeftCell, _ := excelize.CoordinatesToCellName(1, 1)
+	bottomRightCell, _ := excelize.CoordinatesToCellName(s.width, s.headerLength)
+	return s.applyCellStyle(topLeftCell, bottomRightCell, s.headerStyleID)
+}
+
+func (s *sheet) applyContentStyle() error {
+	topLeftCell, _ := excelize.CoordinatesToCellName(1, s.headerLength+1)
+	bottomRightCell, _ := excelize.CoordinatesToCellName(s.width, s.length)
+	return s.applyCellStyle(topLeftCell, bottomRightCell, s.contentStyleID)
+}
+
+func (s *sheet) applyCellStyle(topLeftCell, bottomRightCell string, styleID int) error {
+	return s.file.SetCellStyle(s.name, topLeftCell, bottomRightCell, styleID)
 }
