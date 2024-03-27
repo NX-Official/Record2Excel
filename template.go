@@ -84,8 +84,9 @@ func buildItemTree(model any, t reflect.Type, parentPath string) *itemNode {
 			panic(err)
 		}
 
-		valMap := val.(map[string]bool)
-		for key := range valMap {
+		mapIter := reflect.ValueOf(val).MapRange()
+		for mapIter.Next() {
+			key := mapIter.Key().Interface().(string)
 			childNode := &itemNode{
 				name:      key,
 				tagName:   key,
@@ -94,20 +95,6 @@ func buildItemTree(model any, t reflect.Type, parentPath string) *itemNode {
 			}
 			node.subItems = append(node.subItems, childNode)
 		}
-
-		//switch t.Elem().Kind() {
-		//case reflect.Bool:
-		//	for key := range val.(map[string]bool) {
-		//		childNode := &itemNode{
-		//			name:      key,
-		//			tagName:   key,
-		//			fieldPath: parentPath + "." + t.Name(),
-		//			subItems:  []*itemNode{},
-		//		}
-		//		node.subItems = append(node.subItems, childNode)
-		//	}
-		//
-		//}
 	}
 	return node
 }
