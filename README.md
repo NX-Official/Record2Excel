@@ -6,6 +6,10 @@
 
 ## 快速入门
 
+```go
+ go get -u "github.com/NX-Official/Record2Excel@latest"
+```
+
 目前变动较多，文档待完善
 
 面向测试编程，可查看 [./book_test.go](./book_test.go) 了解使用方法
