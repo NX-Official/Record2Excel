@@ -248,7 +248,7 @@ func (s *sheet) AddRecord(record any) (err error) {
 
 func (s *sheet) writeCell(colName string, row int, value any) error {
 	cell, _ := excelize.CoordinatesToCellName(s.colIndex[colName], row)
-	fmt.Println(colName, "->", s.colIndex[colName], row, cell, value)
+	log(colName, "->", s.colIndex[colName], row, cell, value)
 	return s.file.SetCellValue(s.name, cell, value)
 }
 
