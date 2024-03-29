@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/xuri/excelize/v2"
 	"reflect"
-	"sort"
 )
 
 type Sheet interface {
@@ -208,11 +207,11 @@ func (s *sheet) addRecord(v reflect.Value) (err error) {
 			}
 		case reflect.Map:
 			mapKeys := v.MapKeys()
-			sort.Slice(mapKeys, func(i, j int) bool {
-				return mapKeys[i].String() < mapKeys[j].String()
-			})
-			for i, key := range mapKeys {
-				_, childMaxIdx := insert(v.MapIndex(key), node.subItems[i], currIdx)
+			//sort.Slice(mapKeys, func(i, j int) bool {
+			//	return mapKeys[i].String() < mapKeys[j].String()
+			//})
+			for _, key := range mapKeys {
+				_, childMaxIdx := insert(v.MapIndex(key), node.subItems[node.key2Index[key.String()]], currIdx)
 				maxIdx = max(maxIdx, childMaxIdx)
 			}
 		case reflect.Slice:
@@ -249,7 +248,7 @@ func (s *sheet) AddRecord(record any) (err error) {
 
 func (s *sheet) writeCell(colName string, row int, value any) error {
 	cell, _ := excelize.CoordinatesToCellName(s.colIndex[colName], row)
-	//fmt.Println(colName, "->", s.colIndex[colName], row, cell, value)
+	fmt.Println(colName, "->", s.colIndex[colName], row, cell, value)
 	return s.file.SetCellValue(s.name, cell, value)
 }
 

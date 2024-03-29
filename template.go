@@ -3,7 +3,6 @@ package Record2Excel
 import (
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
 )
 
@@ -17,6 +16,7 @@ type itemNode struct {
 	tagName   string
 	fieldPath string
 	subItems  []*itemNode
+	key2Index map[string]int
 }
 
 func (t template) depth() int {
@@ -54,6 +54,7 @@ func buildItemTree(model any, t reflect.Type, parentPath string) *itemNode {
 		name:      t.Name(),
 		fieldPath: parentPath,
 		subItems:  []*itemNode{},
+		key2Index: make(map[string]int),
 	}
 
 	if t.Kind() == reflect.Slice {
@@ -84,32 +85,34 @@ func buildItemTree(model any, t reflect.Type, parentPath string) *itemNode {
 		if err != nil {
 			panic(err)
 		}
-		mapKeys := reflect.ValueOf(val).MapKeys()
-		sort.Slice(mapKeys, func(i, j int) bool {
-			return mapKeys[i].String() < mapKeys[j].String()
-		})
+		//mapKeys := reflect.ValueOf(val).MapKeys()
+		//sort.Slice(mapKeys, func(i, j int) bool {
+		//	return mapKeys[i].String() < mapKeys[j].String()
+		//})
 
-		for _, key := range mapKeys {
-			childNode := &itemNode{
-				name:      key.String(),
-				tagName:   key.String(),
-				fieldPath: parentPath + "." + key.String(),
-				subItems:  []*itemNode{},
-			}
-			node.subItems = append(node.subItems, childNode)
-		}
-
-		//mapIter := reflect.ValueOf(val).MapRange()
-		//for mapIter.Next() {
-		//	key := mapIter.Key().Interface().(string)
+		//for _, key := range mapKeys {
 		//	childNode := &itemNode{
-		//		name:      key,
-		//		tagName:   key,
-		//		fieldPath: parentPath + "." + key,
+		//		name:      key.String(),
+		//		tagName:   key.String(),
+		//		fieldPath: parentPath + "." + key.String(),
 		//		subItems:  []*itemNode{},
 		//	}
 		//	node.subItems = append(node.subItems, childNode)
 		//}
+
+		mapIter := reflect.ValueOf(val).MapRange()
+		for mapIter.Next() {
+			key := mapIter.Key().Interface().(string)
+			childNode := &itemNode{
+				name:      key,
+				tagName:   key,
+				fieldPath: parentPath + "." + key,
+				subItems:  []*itemNode{},
+			}
+			node.subItems = append(node.subItems, childNode)
+			node.key2Index[key] = len(node.subItems) - 1
+		}
+
 	}
 	return node
 }
