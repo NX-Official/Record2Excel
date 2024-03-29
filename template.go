@@ -3,6 +3,7 @@ package Record2Excel
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -83,18 +84,32 @@ func buildItemTree(model any, t reflect.Type, parentPath string) *itemNode {
 		if err != nil {
 			panic(err)
 		}
+		mapKeys := reflect.ValueOf(val).MapKeys()
+		sort.Slice(mapKeys, func(i, j int) bool {
+			return mapKeys[i].String() < mapKeys[j].String()
+		})
 
-		mapIter := reflect.ValueOf(val).MapRange()
-		for mapIter.Next() {
-			key := mapIter.Key().Interface().(string)
+		for _, key := range mapKeys {
 			childNode := &itemNode{
-				name:      key,
-				tagName:   key,
-				fieldPath: parentPath + "." + key,
+				name:      key.String(),
+				tagName:   key.String(),
+				fieldPath: parentPath + "." + key.String(),
 				subItems:  []*itemNode{},
 			}
 			node.subItems = append(node.subItems, childNode)
 		}
+
+		//mapIter := reflect.ValueOf(val).MapRange()
+		//for mapIter.Next() {
+		//	key := mapIter.Key().Interface().(string)
+		//	childNode := &itemNode{
+		//		name:      key,
+		//		tagName:   key,
+		//		fieldPath: parentPath + "." + key,
+		//		subItems:  []*itemNode{},
+		//	}
+		//	node.subItems = append(node.subItems, childNode)
+		//}
 	}
 	return node
 }
@@ -118,13 +133,9 @@ func getValueByPath(v any, path string) (any, error) {
 		if val.Kind() == reflect.Ptr {
 			val = val.Elem()
 		}
-
-		// 确保我们处理的是结构体
 		if val.Kind() != reflect.Struct {
 			return nil, fmt.Errorf("not a struct or has no field '%s'", part)
 		}
-
-		// 获取指定的字段
 		val = val.FieldByName(part)
 		if !val.IsValid() {
 			return nil, fmt.Errorf("field not found: %s", part)

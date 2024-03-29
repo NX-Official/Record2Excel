@@ -5,58 +5,43 @@ import (
 )
 
 var overview = Overview{
-	StaffId:   "22050626",
-	StaffName: "王文杰",
-	ClassNo:   "22184111",
-	Score:     100,
-	Tag:       []string{"Tag1", "Tag2", "Tag3"},
-	Awards:    []string{"奖项1", "奖项2"},
-	Achievement: []OverviewAchievement{
-		{
-			Name:         "第一届钱潮杯普法短视频创意大赛",
-			Score:        0,
-			AchieveScore: 10,
-			Achieved:     false,
-		},
-		{
-			Name:         "卡尔·马克思杯2",
-			Score:        100,
-			AchieveScore: 10,
-			Achieved:     true,
-		},
-	},
+	StaffId:     "21063217",
+	StaffName:   "童衍鑫",
+	ClassNo:     "21063112",
+	Score:       99.28,
+	Tag:         nil,
+	Awards:      nil,
+	Achievement: nil,
 	Pin: []OverviewPin{
-		{
-			Name:  "学生工作奖",
-			Score: 10,
-		}, {
-			Name:  "学习进步奖",
-			Score: 10,
-		},
-		{
-			Name:  "优秀学生干部",
-			Score: 10,
-		},
+		{Name: "学生干部加分", Score: 6},
+		{Name: "文体类竞赛", Score: 2},
+		{Name: "德育分", Score: 99.91},
+		{Name: "加权平均分", Score: 94.01},
+		{Name: "竞赛绩点加成", Score: 5},
+		{Name: "智育分", Score: 99.01},
+		{Name: "绩点", Score: 4.861},
 	},
 }
 
 var achievement = Achievement{
-	StaffId:   "22050626",
-	StaffName: "王文杰",
-	ClassNo:   "22184111",
-	Achievement: map[string]bool{
-		"第一届钱潮杯普法短视频创意大赛": false,
-		"卡尔·马克思杯2":        true,
-	},
+	StaffId:     "21063217",
+	StaffName:   "童衍鑫",
+	ClassNo:     "21063112",
+	Achievement: nil,
 }
 
 var pin = Pin{
-	StaffId:   "22050626",
-	StaffName: "王文杰",
-	ClassNo:   "22184111",
+	StaffId:   "21063217",
+	StaffName: "童衍鑫",
+	ClassNo:   "21063112",
 	Pin: map[string]float64{
-		"学生工作奖": 10,
-		"学习进步奖": 10,
+		"学生干部加分": 6,
+		"文体类竞赛":  2,
+		"德育分":    99.91,
+		"加权平均分":  94.01,
+		"竞赛绩点加成": 5,
+		"智育分":    99.01,
+		"绩点":     4.861,
 	},
 }
 
@@ -65,12 +50,10 @@ func Test_exporter_buildHeader(t *testing.T) {
 	o, _ := wb.AddSheet("overview", overview)
 	o.AddRecord(overview)
 	a, _ := wb.AddSheet("achievement", achievement)
-	//a.AddRecord(achievement)
-	//a.AddRecord(achievement)
-	//
-	//a.AddRecord(achievement)
 	a.AddRecords([]Achievement{achievement, achievement, achievement})
 	p, _ := wb.AddSheet("pin", pin)
+	p.AddRecord(pin)
+	p.AddRecord(pin)
 	p.AddRecord(pin)
 
 	file, _ := wb.Export()

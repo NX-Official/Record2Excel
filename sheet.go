@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/xuri/excelize/v2"
 	"reflect"
+	"sort"
 )
 
 type Sheet interface {
@@ -206,7 +207,11 @@ func (s *sheet) addRecord(v reflect.Value) (err error) {
 				maxIdx = max(maxIdx, childMaxIdx)
 			}
 		case reflect.Map:
-			for i, key := range v.MapKeys() {
+			mapKeys := v.MapKeys()
+			sort.Slice(mapKeys, func(i, j int) bool {
+				return mapKeys[i].String() < mapKeys[j].String()
+			})
+			for i, key := range mapKeys {
 				_, childMaxIdx := insert(v.MapIndex(key), node.subItems[i], currIdx)
 				maxIdx = max(maxIdx, childMaxIdx)
 			}
